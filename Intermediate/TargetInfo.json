@@ -1,0 +1,14 @@
+{
+	"Targets": [
+		{
+			"Name": "LD57",
+			"Path": "..\\Source\\LD57.Target.cs",
+			"Type": "Game"
+		},
+		{
+			"Name": "LD57Editor",
+			"Path": "..\\Source\\LD57Editor.Target.cs",
+			"Type": "Editor"
+		}
+	]
+}

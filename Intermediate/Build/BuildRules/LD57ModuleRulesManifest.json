@@ -1,0 +1,8 @@
+{
+	"SourceFiles": [
+		"D:\\Unreal Projects\\LD57\\Source\\LD57\\LD57.Build.cs",
+		"D:\\Unreal Projects\\LD57\\Source\\LD57.Target.cs",
+		"D:\\Unreal Projects\\LD57\\Source\\LD57Editor.Target.cs"
+	],
+	"EngineVersion": "5.3.1"
+}
