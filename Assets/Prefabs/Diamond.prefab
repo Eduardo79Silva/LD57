@@ -77,8 +77,8 @@ SpriteRenderer:
   m_SortingLayerID: 0
   m_SortingLayer: 0
   m_SortingOrder: 0
-  m_Sprite: {fileID: 7482667652216324306, guid: 311925a002f4447b3a28927169b83ea6, type: 3}
-  m_Color: {r: 0.33018857, g: 1, b: 0.89055765, a: 1}
+  m_Sprite: {fileID: -3030009833883744242, guid: c196c553cbd82ec4396e16dba8aad4e2, type: 3}
+  m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_FlipX: 0
   m_FlipY: 0
   m_DrawMode: 0
@@ -100,8 +100,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2d0b7a6a4720d76459143fcd77d0c2f5, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  oreType: 3
+  isMineable: 1
+  isBrittle: 0
+  maxStressCapacity: 20
+  currentStress: 0
+  lateralConnectionStrength: 0.7
+  diagonalConnectionStrength: 0.3
+  dampingFactor: 0
   gridX: 0
   gridY: 0
   supportStrength: 5
-  torqueFactor: 0.5
+  torqueFactor: 0.3
+  weight: 1.5
   gridManager: {fileID: 0}

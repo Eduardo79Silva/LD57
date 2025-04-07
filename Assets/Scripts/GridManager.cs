@@ -2,7 +2,9 @@ using UnityEngine;
 
 public class GridManager : MonoBehaviour
 {
-    public float cellSize = 1f;
+    public static GridManager Instance { get; private set; }
+    public float cellSize;
+    public float downwardsSizeOfGrid = 10f;
     public ProceduralBlockFactory blockFactory; // Reference to our block generator
 
     [HideInInspector]
@@ -13,6 +15,19 @@ public class GridManager : MonoBehaviour
     [HideInInspector]
     public Vector3 gridOrigin;
 
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+            Debug.Log("GridManager instance set");
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
+
     void Start()
     {
         // Calculate screen dimensions using the orthographic camera.
@@ -22,9 +37,11 @@ public class GridManager : MonoBehaviour
         float screenHeight = cam.orthographicSize * 2f;
         float screenWidth = screenHeight * cam.aspect;
 
-        // Grid: as wide as the screen and twice as tall (extending downward).
-        float gridWorldHeight = screenHeight * 2f;
+        float gridWorldHeight = screenHeight * downwardsSizeOfGrid;
         float gridWorldWidth = screenWidth;
+
+        // Calculate cell size based on the screen size and desired grid dimensions.
+        cellSize = Mathf.Min(gridWorldWidth / 21f, gridWorldHeight / 21f); // 10 cells in each direction
 
         GridWidthInCells = Mathf.CeilToInt(gridWorldWidth / cellSize);
         GridHeightInCells = Mathf.CeilToInt(gridWorldHeight / cellSize);
@@ -59,15 +76,16 @@ public class GridManager : MonoBehaviour
         {
             // Compute a ground height for this column using Perlin noise.
             float noiseValue = Mathf.PerlinNoise((x + noiseOffset) * noiseScale, 0f);
-            int groundHeight =
-                Mathf.FloorToInt(noiseValue * (GridHeightInCells / 2)) + GridHeightInCells / 4;
+            int groundHeight = Mathf.FloorToInt(
+                noiseValue * (GridHeightInCells / 2) + GridHeightInCells * 0.6f
+            );
 
             // Fill in all cells below (and including) groundHeight.
             for (int y = 0; y < GridHeightInCells; y++)
             {
                 if (y <= groundHeight)
                 {
-                    Vector3 spawnPos = new Vector3(
+                    Vector3 spawnPos = new(
                         gridOrigin.x + x * cellSize + cellSize / 2f,
                         gridOrigin.y + y * cellSize + cellSize / 2f,
                         0
@@ -106,6 +124,15 @@ public class GridManager : MonoBehaviour
             Vector3 end = new(gridOrigin.x + gridWorldWidth, gridOrigin.y + y * cellSize, 0);
             Debug.DrawLine(start, end, Color.gray, 100f);
         }
+    }
+
+    public Block GetBlockAt(int x, int y)
+    {
+        if (IsInBounds(x, y) && gridArray[x, y] != null)
+        {
+            return gridArray[x, y].GetComponent<Block>();
+        }
+        return null;
     }
 
     // Public method to “dig” (remove) a block at a given grid coordinate.
@@ -173,15 +200,129 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    // For testing: dig a block where the player clicks.
-    void Update()
+    public void PlaceSupport(GridPosition pos, Item supportItem)
     {
-        if (Input.GetMouseButtonDown(0))
+        if (!IsInBounds(pos.x, pos.y))
+            return;
+
+        if (gridArray[pos.x, pos.y] == null)
         {
-            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            int x = Mathf.FloorToInt((mouseWorldPos.x - gridOrigin.x) / cellSize);
-            int y = Mathf.FloorToInt((mouseWorldPos.y - gridOrigin.y) / cellSize);
-            RemoveBlockAt(x, y);
+            Vector3 spawnPos = new(
+                gridOrigin.x + pos.x * cellSize + cellSize / 2f,
+                gridOrigin.y + pos.y * cellSize + cellSize / 2f,
+                0
+            );
+
+            GameObject supportGO = Instantiate(
+                ((SupportItem)supportItem).supportPrefab,
+                spawnPos,
+                Quaternion.identity
+            );
+
+            gridArray[pos.x, pos.y] = supportGO;
+
+            InventoryManager.Instance.RemoveItem(supportItem);
+            Debug.Log($"Placed support structure at {pos}");
         }
+        else
+        {
+            Debug.Log("Cannot place support — space is occupied.");
+        }
+    }
+
+    public bool CanPlaceSupport(GridPosition pos)
+    {
+        if (!IsInBounds(pos.x, pos.y))
+            return false;
+
+        // Check if the cell is empty (no GameObject placed there)
+        return gridArray[pos.x, pos.y] == null;
+    }
+
+    public void PullOre(GridPosition pos)
+    {
+        Vector2 center = pos.ToWorld();
+        float radius = cellSize * 1.5f;
+
+        Collider2D[] hits = Physics2D.OverlapCircleAll(center, radius);
+
+        foreach (var hit in hits)
+        {
+            if (hit.TryGetComponent<OrePickup>(out var orePickup))
+            {
+                Vector2 pullDirection = (center - (Vector2)orePickup.transform.position).normalized;
+                orePickup.ApplyMagnetForce(pullDirection);
+            }
+        }
+    }
+
+    public void MineAt(GridPosition pos)
+    {
+        Debug.Log($"Mining at {pos}");
+        if (!IsInBounds(pos.x, pos.y))
+            return;
+
+        Block targetBlock = GetBlockAt(pos.x, pos.y);
+        Debug.Log($"Target block: {targetBlock}");
+        if (targetBlock != null && targetBlock.isMineable)
+        {
+            RemoveBlockAt(pos.x, pos.y);
+        }
+    }
+}
+
+public struct GridPosition
+{
+    public int x;
+    public int y;
+
+    public GridPosition(int x, int y)
+    {
+        this.x = x;
+        this.y = y;
+    }
+
+    public static GridPosition FromWorld(Vector2 worldPos)
+    {
+        if (GridManager.Instance == null)
+        {
+            Debug.LogError(
+                "GridManager.Instance is null! Make sure GridManager is active in the scene."
+            );
+            return default;
+        }
+        // Convert world position to grid position based on the grid's origin and cell size.
+        Debug.Log($"Grid Origin: {GridManager.Instance.gridOrigin}");
+        Debug.Log($"Cell Size: {GridManager.Instance.cellSize}");
+
+        int x = Mathf.FloorToInt(
+            (worldPos.x - GridManager.Instance.gridOrigin.x) / GridManager.Instance.cellSize
+        );
+        int y = Mathf.FloorToInt(
+            (worldPos.y - GridManager.Instance.gridOrigin.y) / GridManager.Instance.cellSize
+        );
+        return new GridPosition(x, y);
+    }
+
+    public static GridPosition GetMousePositionInGrid()
+    {
+        // Get the mouse position in world coordinates and convert it to grid coordinates.
+        Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        return FromWorld(mouseWorldPos);
+    }
+
+    public Vector2 ToWorld()
+    {
+        return new Vector2(x + 0.5f, y + 0.5f); // Center of tile
+    }
+
+    public static GridPosition operator +(GridPosition a, GridPosition b)
+    {
+        return new GridPosition(a.x + b.x, a.y + b.y);
+    }
+
+    public override string ToString()
+    {
+        return $"({x}, {y})";
     }
 }

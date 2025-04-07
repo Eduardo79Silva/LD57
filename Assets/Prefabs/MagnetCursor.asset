@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: db99fae164ac360428b9dc67b0909776, type: 3}
+  m_Name: MagnetCursor
+  m_EditorClassIdentifier: 
+  itemName: MagnetCursor
+  icon: {fileID: 1745802733261202971, guid: d21ffe8b9719deb4b97d0e936e33c21a, type: 3}
+  cursorIcon: {fileID: 2800000, guid: 9791a1fbab25ed84cb0475f36434a661, type: 3}
+  type: 1
+  cursorMode: 2
+  pullStrength: 5
+  pullRadius: 3

@@ -1,13 +1,37 @@
+using System.Collections.Generic;
 using UnityEngine;
+
+public enum OreType
+{
+    Dirt,
+    Iron,
+    Gold,
+    Diamond,
+}
 
 // Represents an individual block that tracks its own structural properties.
 public class Block : MonoBehaviour
 {
+    public OreType oreType;
+    public bool isMineable = true;
+    public bool isBrittle = false; // If true, the block is more likely to break under tension.
+    public float maxStressCapacity = 10.0f; // Maximum stress capacity of the block.
+    public float currentStress = 0.0f; // Current stress on the block.
+    public float lateralConnectionStrength = 0.7f; // Connection strength to blocks on the same level.
+    public float diagonalConnectionStrength = 0.3f; // Connection strength to diagonal blocks.
+    public float dampingFactor = 0.0f; // How much this material absorbs/reduces force transfer.
     public int gridX,
         gridY;
-    public int supportStrength = 5; // How much load this block can support.
-    public float torqueFactor = 0.5f; // Factor for torque calculation.
+    public int supportStrength = 5; // How much tension the block can handle.
+    public float torqueFactor = 0.3f; // Additional torque from lateral gaps.
     public float weight = 1f; // Weight of the block itself.
+
+    // Multipliers for support contributions.
+    private const float directSupportValue = 1f;
+    private const float diagonalSupportValue = 0.7f;
+
+    // Multiplier to convert support into load reduction.
+    private const float supportMultiplier = 3.0f;
 
     [HideInInspector]
     public GridManager gridManager;
@@ -20,53 +44,73 @@ public class Block : MonoBehaviour
         gridManager = manager;
     }
 
-    // Evaluate the block's stability. This method uses a simplified model:
-    // 1. Checks for direct support below.
-    // 2. If unsupported, calculates indirect (lateral) support.
-    // 3. Also estimates a "torque" effect based on how far the block is laterally offset from support.
+    /// <summary>
+    /// Evaluate the block's stability using a two-part approach:
+    /// (1) Check downward connectivity (only allow downward moves).
+    /// (2) Compute vertical load versus lateral support.
+    /// Only blocks that lose vertical connectivity will collapse,
+    /// and then only the blocks above (dependent on that support) will fall.
+    /// </summary>
     public bool EvaluateStability()
     {
-        bool hasDirectSupport = HasDirectSupport();
-
-        if (hasDirectSupport)
+        // If the block has direct vertical support, it's stable.
+        if (HasDirectSupport())
+        {
+            SetColor(Color.green);
             return true;
+        }
 
-        float indirectSupport = 0f;
+        // Check if this block (or its connected structure) has a downward path to the ground.
+        if (!IsConnectedDownwards())
+        {
+            CollapseAndCollapseAbove();
+            return false;
+        }
+
+        // Calculate vertical load: weight of itself plus blocks above.
+        int blocksAbove = CountBlocksAbove();
+        float verticalLoad = (blocksAbove + 1) * weight;
+
+        // Compute lateral support from immediate left/right neighbors that are downward-connected.
+        float lateralSupport = 0f;
         if (gridManager.IsInBounds(gridX - 1, gridY))
         {
-            GameObject left = gridManager.gridArray[gridX - 1, gridY];
-            if (left != null && IsBlockSupported(left))
-                indirectSupport += 1f;
+            Block left = gridManager.GetBlockAt(gridX - 1, gridY);
+            if (left != null && left.IsConnectedDownwards())
+                lateralSupport += directSupportValue;
         }
-        // Check right neighbor.
         if (gridManager.IsInBounds(gridX + 1, gridY))
         {
-            GameObject right = gridManager.gridArray[gridX + 1, gridY];
-            if (right != null && IsBlockSupported(right))
-                indirectSupport += 1f;
+            Block right = gridManager.GetBlockAt(gridX + 1, gridY);
+            if (right != null && right.IsConnectedDownwards())
+                lateralSupport += directSupportValue;
         }
 
-        // Estimate the weight above this block.
-        int weightAbove = CountBlocksAbove();
+        // Optionally add a torque term if there is a gap horizontally.
+        float lateralOffset = Mathf.Max(GetSupportDistance(-1), GetSupportDistance(1));
+        float lateralTorque = lateralOffset * torqueFactor;
 
-        // Determine the support needed.
-        float requiredSupport = (weightAbove * 0.5f) + weight;
+        // Compute effective tension.
+        float tension = verticalLoad - (lateralSupport * supportMultiplier) + lateralTorque;
 
-        // Estimate torque based on lateral distance from support.
-        float leftDistance = GetSupportDistance(-1);
-        float rightDistance = GetSupportDistance(1);
-        float torque = Mathf.Max(leftDistance, rightDistance) * torqueFactor * weightAbove;
-
-        // If indirect support is insufficient or torque is too high, the block collapses.
-        if (indirectSupport < requiredSupport || torque > supportStrength)
+        // If tension exceeds the support strength, then the block (and dependent blocks above) collapse.
+        if (tension > supportStrength)
         {
-            Collapse();
-            return false; // Block is unstable and collapses.
+            CollapseAndCollapseAbove();
+            return false;
         }
-        return true; // Block is stable.
+        else
+        {
+            // Change color based on stability (more green means stable).
+            float stability = Mathf.Clamp01(1 - (tension / supportStrength));
+            SetColor(Color.Lerp(Color.red, Color.green, stability));
+            return true;
+        }
     }
 
-    // Check if there is a block directly below.
+    /// <summary>
+    /// Checks if there is a block directly below.
+    /// </summary>
     public bool HasDirectSupport()
     {
         if (gridManager.IsInBounds(gridX, gridY - 1))
@@ -74,7 +118,21 @@ public class Block : MonoBehaviour
         return false;
     }
 
-    // Count the number of blocks directly above this one.
+    /// <summary>
+    /// Checks for diagonal support in a given direction (-1 for bottom-left, 1 for bottom-right).
+    /// </summary>
+    private bool HasDiagonalSupport(int direction)
+    {
+        int newX = gridX + direction;
+        int newY = gridY - 1;
+        if (gridManager.IsInBounds(newX, newY))
+            return gridManager.gridArray[newX, newY] != null;
+        return false;
+    }
+
+    /// <summary>
+    /// Count the number of blocks directly above this block.
+    /// </summary>
     private int CountBlocksAbove()
     {
         int count = 0;
@@ -86,28 +144,19 @@ public class Block : MonoBehaviour
         return count;
     }
 
-    // Determine if a neighboring block is supported (i.e. has a block below it).
-    private bool IsBlockSupported(GameObject blockObj)
-    {
-        if (blockObj.TryGetComponent<Block>(out var neighbor))
-        {
-            if (gridManager.IsInBounds(neighbor.gridX, neighbor.gridY - 1))
-                return gridManager.gridArray[neighbor.gridX, neighbor.gridY - 1] != null;
-        }
-        return false;
-    }
-
-    // Calculate how far (in cells) you must go in a given horizontal direction (-1 for left, 1 for right)
-    // before finding a block with direct support.
+    /// <summary>
+    /// Calculate horizontal distance until a block with direct support is found.
+    /// </summary>
     private float GetSupportDistance(int direction)
     {
         float distance = 0f;
         int currentX = gridX;
         while (gridManager.IsInBounds(currentX, gridY))
         {
-            if (gridManager.gridArray[currentX, gridY] != null)
+            GameObject currentBlock = gridManager.gridArray[currentX, gridY];
+            if (currentBlock != null)
             {
-                Block b = gridManager.gridArray[currentX, gridY].GetComponent<Block>();
+                Block b = currentBlock.GetComponent<Block>();
                 if (b != null && b.HasDirectSupport())
                     break;
             }
@@ -117,8 +166,79 @@ public class Block : MonoBehaviour
         return distance;
     }
 
+    /// <summary>
+    /// Checks if this block is connected downward (only moves with dy <= 0 are allowed)
+    /// to a block at the bottom (gridY == 0) or one that has direct support.
+    /// </summary>
+    public bool IsConnectedDownwards()
+    {
+        Queue<Block> queue = new();
+        HashSet<Block> visited = new();
+        queue.Enqueue(this);
+        visited.Add(this);
+
+        // Only allow moves that do not increase y (stay same or move downward).
+        Vector2Int[] directions = new Vector2Int[]
+        {
+            new(0, -1),
+            new(-1, -1),
+            new(1, -1),
+        };
+
+        while (queue.Count > 0)
+        {
+            Block current = queue.Dequeue();
+            // If at the bottom or directly supported, then the chain is anchored.
+            if (current.gridY == 0 || current.HasDirectSupport())
+                return true;
+
+            foreach (var offset in directions)
+            {
+                int nx = current.gridX + offset.x;
+                int ny = current.gridY + offset.y;
+                if (gridManager.IsInBounds(nx, ny) && gridManager.gridArray[nx, ny] != null)
+                {
+                    Block neighbor = gridManager.gridArray[nx, ny].GetComponent<Block>();
+                    if (neighbor != null && !visited.Contains(neighbor))
+                    {
+                        visited.Add(neighbor);
+                        queue.Enqueue(neighbor);
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    /// <summary>
+    /// Collapse this block and trigger collapse for blocks above that depend on it.
+    /// </summary>
+    public void CollapseAndCollapseAbove()
+    {
+        // Collapse this block.
+        Collapse();
+
+        Block b = gridManager.gridArray[gridX, gridY + 1].GetComponent<Block>();
+        if (b != null)
+            b.EvaluateStability();
+    }
+
+    /// <summary>
+    /// Collapse this block (simulate falling or breaking off).
+    /// </summary>
     public void Collapse()
     {
         gridManager.RemoveBlockAt(gridX, gridY);
+        // Optionally add visual or sound effects here.
+    }
+
+    /// <summary>
+    /// Helper to set the block's color.
+    /// </summary>
+    private void SetColor(Color color)
+    {
+        Renderer rend = GetComponent<Renderer>();
+        if (rend != null)
+            rend.material.color = color;
     }
 }

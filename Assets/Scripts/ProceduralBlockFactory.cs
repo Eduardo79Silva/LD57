@@ -22,12 +22,76 @@ public class ProceduralBlockFactory : BlockFactory
         this.gridManager = gridManager;
     }
 
+    private Block FindNeighborOre(int x, int y)
+    {
+        // Collect all neighbors that have an ore (not default).
+        List<Block> foundOres = new();
+
+        for (int dx = -1; dx <= 1; dx++)
+        {
+            for (int dy = -1; dy <= 1; dy++)
+            {
+                if (dx == 0 && dy == 0)
+                    continue;
+                int nx = x + dx;
+                int ny = y + dy;
+                if (!gridManager.IsInBounds(nx, ny))
+                    continue;
+
+                Block block = gridManager.GetBlockAt(nx, ny);
+                if (block != null && block.oreType != defaultPrefab.GetComponent<Block>().oreType)
+                {
+                    foundOres.Add(block);
+                }
+            }
+        }
+
+        // If no ore neighbors, return null.
+        if (foundOres.Count == 0)
+            return null;
+
+        // do a "majority vote" among foundOres if you want clusters to
+        // favor the most common neighbor ore type.
+        Dictionary<OreType, int> oreCount = new();
+        foreach (var ore in foundOres)
+        {
+            if (!oreCount.ContainsKey(ore.oreType))
+            {
+                oreCount[ore.oreType] = 0;
+            }
+            oreCount[ore.oreType]++;
+        }
+        OreType mostCommonOre = defaultPrefab.GetComponent<Block>().oreType;
+
+        int maxCount = 0;
+        foreach (var kvp in oreCount)
+        {
+            if (kvp.Value > maxCount)
+            {
+                maxCount = kvp.Value;
+                mostCommonOre = kvp.Key;
+            }
+        }
+        Debug.Log($"Most common ore: {mostCommonOre} with count: {maxCount}");
+        // Return the first block with the most common ore type.
+        foreach (var ore in foundOres)
+        {
+            if (ore.oreType == mostCommonOre)
+            {
+                return ore;
+            }
+        }
+
+        // This should never happen if the logic is correct.
+        throw new System.Exception("No ore found in neighbors!");
+    }
+
     /// <summary>
     /// Selects a block prefab based on grid position, local depth ratio, and ore noise.
     /// </summary>
     public GameObject GetBlockPrefab(int x, int y, float depthRatio, float oreNoise)
     {
-        List<(GameObject prefab, float weight)> candidates = new List<(GameObject, float)>();
+        List<(GameObject prefab, float weight)> candidates = new();
 
         // Define a threshold for ore noise.
         float oreNoiseThreshold = 0.65f;
@@ -54,11 +118,23 @@ public class ProceduralBlockFactory : BlockFactory
             }
         }
 
-        Debug.Log($"Candidates for ({x}, {y}): {candidates.Count}");
-
         // If no candidate is available, return default.
         if (candidates.Count == 0)
             return defaultPrefab;
+
+        Block surroundingOre = FindNeighborOre(x, y);
+        if (surroundingOre != null)
+        {
+            // Filter candidates to that ore type only.
+            List<(GameObject prefab, float weight)> newCandidates = candidates.FindAll(candidate =>
+            {
+                Block blockComp = candidate.prefab.GetComponent<Block>();
+                return blockComp != null && blockComp.oreType == surroundingOre.oreType;
+            });
+
+            if (newCandidates.Count > 0)
+                candidates = newCandidates;
+        }
 
         float totalWeight = 0f;
         foreach (var (prefab, weight) in candidates)
@@ -85,9 +161,13 @@ public class ProceduralBlockFactory : BlockFactory
         float oreNoiseScale = 0.2f;
         float oreNoise = Mathf.PerlinNoise(x * oreNoiseScale, y * oreNoiseScale);
         GameObject chosenPrefab = GetBlockPrefab(x, y, depthRatio, oreNoise);
-        Debug.Log(
-            $"Chosen prefab for ({x}, {y}) at depthRatio {depthRatio:F2}: {chosenPrefab.name}"
-        );
-        return Instantiate(chosenPrefab, spawnPos, Quaternion.identity);
+        GameObject blockInstance = Instantiate(chosenPrefab, spawnPos, Quaternion.identity);
+
+        // Adjust block scale so it fills the grid cell.
+        // For example, if each cell is gridManager.cellSize units,
+        // set the block's scale to that size.
+        blockInstance.transform.localScale = Vector3.one * gridManager.cellSize;
+
+        return blockInstance;
     }
 }
