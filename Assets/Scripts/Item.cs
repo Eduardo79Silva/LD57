@@ -8,9 +8,13 @@ public enum ItemType
     Consumable,
 }
 
-public class Item : ScriptableObject
+public class Item : MonoBehaviour
 {
     public string itemName;
+    public string description;
+    public int maxStackSize = 1;
+    public int sellValue = 0;
+    public int amount = 1;
     public Sprite icon;
     public Texture2D cursorIcon;
     public ItemType type;

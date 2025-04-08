@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using TMPro;
 using UnityEngine;
-using UnityEngine.UI;
 
 public class InventoryUI : MonoBehaviour
 {
@@ -14,8 +12,8 @@ public class InventoryUI : MonoBehaviour
     public int maxSlots = 10;
     public Vector2 slotSize = new(70f, 70f);
     public float slotSpacing = 10f;
-    public Color selectedColor = new(1f, 1f, 1f, 1f);
-    public Color unselectedColor = new(0.7f, 0.7f, 0.7f, 0.7f);
+    public Color selectedColor = new(0xe7, 0xd1, 0x88, 1f);
+    public Color unselectedColor = new(0xc9, 0x9f, 0x68, 1f);
 
     private List<ItemSlotUI> itemSlots = new();
     private InventoryManager inventoryManager;
@@ -28,6 +26,7 @@ public class InventoryUI : MonoBehaviour
         {
             inventoryManager.OnInventoryChanged += UpdateAllSlots;
         }
+
         SetupInventoryUI();
         UpdateAllSlots();
         SelectSlot(0); // Select first slot by default
@@ -44,24 +43,15 @@ public class InventoryUI : MonoBehaviour
 
     void Update()
     {
-        // Handle number keys 1-9, 0 (for slot 10)
-        for (int i = 0; i < 10; i++)
-        {
-            int keyNumber = (i + 1) % 10; // Maps 0-9 to 1-9,0
-            if (Input.GetKeyDown(keyNumber.ToString()))
-            {
-                SelectSlot(i);
-            }
-        }
-
-        // Handle mouse scroll wheel for selection
-        float scrollDelta = Input.GetAxis("Mouse ScrollWheel");
-        if (Mathf.Abs(scrollDelta) > 0.01f)
-        {
-            int direction = scrollDelta > 0 ? -1 : 1;
-            int newIndex = (inventoryManager.selectedIndex + direction + maxSlots) % maxSlots;
-            SelectSlot(newIndex);
-        }
+        //// Handle number keys 1-9, 0 (for slot 10)
+        //for (int i = 0; i < 10; i++)
+        //{
+        //    int keyNumber = (i + 1) % 10; // Maps 0-9 to 1-9,0
+        //    if (Input.GetKeyDown(keyNumber.ToString()))
+        //    {
+        //        SelectSlot(i);
+        //    }
+        //}
     }
 
     public void SetupInventoryUI()
@@ -69,7 +59,8 @@ public class InventoryUI : MonoBehaviour
         // Clear any existing slots
         foreach (Transform child in itemSlotContainer)
         {
-            Destroy(child.gameObject);
+            if (child.gameObject != itemSlotPrefab && child.gameObject != null)
+                Destroy(child.gameObject);
         }
         itemSlots.Clear();
 
@@ -152,6 +143,7 @@ public class InventoryUI : MonoBehaviour
 
     public void UpdateAllSlots()
     {
+        Debug.Log("Updating all slots in inventory UI");
         if (inventoryManager == null)
             return;
 
@@ -164,5 +156,21 @@ public class InventoryUI : MonoBehaviour
                 itemSlots[i].UpdateItem(item);
             }
         }
+        Debug.Log("All slots updated successfully.");
+    }
+
+    public void CloseInventory()
+    {
+        gameObject.SetActive(false);
+    }
+
+    public void OpenInventory()
+    {
+        gameObject.SetActive(true);
+    }
+
+    public void ToggleInventory()
+    {
+        gameObject.SetActive(!gameObject.activeSelf);
     }
 }

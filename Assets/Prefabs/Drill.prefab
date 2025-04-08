@@ -1,0 +1,56 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1 &5302429052043864094
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 5956637208081760382}
+  - component: {fileID: 5935745571707771564}
+  m_Layer: 0
+  m_Name: Drill
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &5956637208081760382
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5302429052043864094}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0.16479217, y: 0.15284939, z: -0.33194223}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 0}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &5935745571707771564
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 5302429052043864094}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59f3487c18f382448b429555834ac389, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  itemName: Drill
+  description: 'Your great friend: The Drill'
+  maxStackSize: 1
+  sellValue: 0
+  amount: 1
+  icon: {fileID: -6872676176704462011, guid: 5170af9e42703f943ac313bee613afc4, type: 3}
+  cursorIcon: {fileID: 2800000, guid: 1b7f03e32a66ca14587395f914f6d45e, type: 3}
+  type: 0
+  cursorMode: 1
+  drillPrefab: {fileID: 0}

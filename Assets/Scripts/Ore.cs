@@ -1,9 +1,8 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewOre", menuName = "Items/Ore")]
 public class Ore : Item
 {
-    public int sellValue;
+    public OreType oreType; // Type of ore (e.g., copper, iron, etc.)
 
     private void OnEnable()
     {

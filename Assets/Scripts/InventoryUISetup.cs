@@ -1,3 +1,4 @@
+using System.Data.Common;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -21,6 +22,8 @@ public class InventoryUISetup : MonoBehaviour
         // Clear existing slots
         while (itemSlotContainer.childCount > 0)
         {
+            if (itemSlotContainer.GetChild(0) == null)
+                break; // Safety check to avoid null reference
             DestroyImmediate(itemSlotContainer.GetChild(0).gameObject);
         }
 

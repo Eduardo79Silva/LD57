@@ -14,7 +14,6 @@ public class CursorManager : MonoBehaviour
 
     public CursorMode currentMode = CursorMode.None;
     public Item currentItem;
-    private GridManager gridManager;
     public GameObject supportPreviewPrefab;
     private SupportPreview currentPreview;
 
@@ -27,11 +26,6 @@ public class CursorManager : MonoBehaviour
     {
         if (Instance == null)
             Instance = this;
-    }
-
-    public void Initialization(GridManager gridManager)
-    {
-        this.gridManager = gridManager;
     }
 
     void Update()
@@ -50,7 +44,7 @@ public class CursorManager : MonoBehaviour
             if (magnetTimer >= magnetUpdateInterval)
             {
                 magnetTimer = 0f;
-                gridManager.PullOre(pos);
+                GridManager.Instance.PullOre(pos);
             }
 
             // Also handle click functionality for magnet items
@@ -69,7 +63,7 @@ public class CursorManager : MonoBehaviour
             }
 
             currentPreview.SetPosition(pos);
-            bool isValid = gridManager.CanPlaceSupport(pos);
+            bool isValid = GridManager.Instance.CanPlaceSupport(pos);
             currentPreview.SetValid(isValid);
 
             if (Input.GetMouseButtonDown(0) && isValid)

@@ -1,6 +1,5 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "DrillItem", menuName = "Items/DrillItem")]
 public class DrillItem : Item
 {
     public GameObject drillPrefab; // Prefab for the drill item

@@ -1,6 +1,5 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewSupportItem", menuName = "Items/Support Item")]
 public class SupportItem : Item
 {
     public GameObject supportPrefab;

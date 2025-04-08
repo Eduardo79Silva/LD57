@@ -27,8 +27,7 @@ public class SlotPrefabSetup : MonoBehaviour
         {
             slotBackground = gameObject.AddComponent<Image>();
         }
-        slotBackground.color = new Color(0.3f, 0.3f, 0.3f, 0.8f);
-
+        slotBackground.color = new Color32(0xc9, 0x9f, 0x68, 0xaa);
         // Create an item icon image
         GameObject iconObject = transform.Find("ItemIcon")?.gameObject;
         if (iconObject == null)

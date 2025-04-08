@@ -13,6 +13,7 @@ public enum OreType
 public class Block : MonoBehaviour
 {
     public OreType oreType;
+    public List<int> oreValues = new List<int> { 0, 5, 10, 20 };
     public bool isMineable = true;
     public bool isBrittle = false; // If true, the block is more likely to break under tension.
     public float maxStressCapacity = 10.0f; // Maximum stress capacity of the block.
@@ -23,7 +24,7 @@ public class Block : MonoBehaviour
     public int gridX,
         gridY;
     public int supportStrength = 5; // How much tension the block can handle.
-    public float torqueFactor = 0.3f; // Additional torque from lateral gaps.
+    public float torqueFactor = 0.1f; // Additional torque from lateral gaps.
     public float weight = 1f; // Weight of the block itself.
 
     // Multipliers for support contributions.
@@ -44,6 +45,11 @@ public class Block : MonoBehaviour
         gridManager = manager;
     }
 
+    public int GetOreValue(OreType oreType)
+    {
+        return oreValues[(int)oreType];
+    }
+
     /// <summary>
     /// Evaluate the block's stability using a two-part approach:
     /// (1) Check downward connectivity (only allow downward moves).
@@ -56,7 +62,7 @@ public class Block : MonoBehaviour
         // If the block has direct vertical support, it's stable.
         if (HasDirectSupport())
         {
-            SetColor(Color.green);
+            //SetColor(Color.green);
             return true;
         }
 
@@ -69,7 +75,6 @@ public class Block : MonoBehaviour
 
         // Calculate vertical load: weight of itself plus blocks above.
         int blocksAbove = CountBlocksAbove();
-        float verticalLoad = (blocksAbove + 1) * weight;
 
         // Compute lateral support from immediate left/right neighbors that are downward-connected.
         float lateralSupport = 0f;
@@ -87,11 +92,11 @@ public class Block : MonoBehaviour
         }
 
         // Optionally add a torque term if there is a gap horizontally.
-        float lateralOffset = Mathf.Max(GetSupportDistance(-1), GetSupportDistance(1));
-        float lateralTorque = lateralOffset * torqueFactor;
+        float lateralOffset = Mathf.Min(GetSupportDistance(-1), GetSupportDistance(1));
+        float lateralTorque = (lateralOffset - 1) * torqueFactor;
 
         // Compute effective tension.
-        float tension = verticalLoad - (lateralSupport * supportMultiplier) + lateralTorque;
+        float tension = (lateralTorque * blocksAbove) - (lateralSupport * supportMultiplier);
 
         // If tension exceeds the support strength, then the block (and dependent blocks above) collapse.
         if (tension > supportStrength)
@@ -102,8 +107,8 @@ public class Block : MonoBehaviour
         else
         {
             // Change color based on stability (more green means stable).
-            float stability = Mathf.Clamp01(1 - (tension / supportStrength));
-            SetColor(Color.Lerp(Color.red, Color.green, stability));
+            //float stability = Mathf.Clamp01(1 - (tension / supportStrength));
+            //SetColor(Color.Lerp(Color.red, Color.green, stability));
             return true;
         }
     }
@@ -178,12 +183,7 @@ public class Block : MonoBehaviour
         visited.Add(this);
 
         // Only allow moves that do not increase y (stay same or move downward).
-        Vector2Int[] directions = new Vector2Int[]
-        {
-            new(0, -1),
-            new(-1, -1),
-            new(1, -1),
-        };
+        Vector2Int[] directions = new Vector2Int[] { new(0, -1), new(-1, -1), new(1, -1) };
 
         while (queue.Count > 0)
         {
@@ -218,7 +218,10 @@ public class Block : MonoBehaviour
         // Collapse this block.
         Collapse();
 
-        Block b = gridManager.gridArray[gridX, gridY + 1].GetComponent<Block>();
+        GameObject go = gridManager.gridArray[gridX, gridY + 1];
+        if (go == null || gridY == 0)
+            return;
+        Block b = go.GetComponent<Block>();
         if (b != null)
             b.EvaluateStability();
     }

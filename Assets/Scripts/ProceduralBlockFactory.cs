@@ -17,9 +17,20 @@ public class ProceduralBlockFactory : BlockFactory
 
     private GridManager gridManager;
 
+    // Define these as fields in your class
+    private float noiseOffsetX;
+    private float noiseOffsetY;
+
     public void Initialization(GridManager gridManager)
     {
         this.gridManager = gridManager;
+    }
+
+    void Start()
+    {
+        // Initialize once, so the noise pattern remains consistent across calls
+        noiseOffsetX = Random.Range(0f, 1000f);
+        noiseOffsetY = Random.Range(0f, 1000f);
     }
 
     private Block FindNeighborOre(int x, int y)
@@ -72,7 +83,6 @@ public class ProceduralBlockFactory : BlockFactory
                 mostCommonOre = kvp.Key;
             }
         }
-        Debug.Log($"Most common ore: {mostCommonOre} with count: {maxCount}");
         // Return the first block with the most common ore type.
         foreach (var ore in foundOres)
         {
@@ -159,13 +169,15 @@ public class ProceduralBlockFactory : BlockFactory
     public override GameObject GenerateBlock(int x, int y, float depthRatio, Vector3 spawnPos)
     {
         float oreNoiseScale = 0.2f;
-        float oreNoise = Mathf.PerlinNoise(x * oreNoiseScale, y * oreNoiseScale);
+        // Apply the random offsets to the noise coordinates
+        float oreNoise = Mathf.PerlinNoise(
+            (x + noiseOffsetX) * oreNoiseScale,
+            (y + noiseOffsetY) * oreNoiseScale
+        );
         GameObject chosenPrefab = GetBlockPrefab(x, y, depthRatio, oreNoise);
         GameObject blockInstance = Instantiate(chosenPrefab, spawnPos, Quaternion.identity);
 
         // Adjust block scale so it fills the grid cell.
-        // For example, if each cell is gridManager.cellSize units,
-        // set the block's scale to that size.
         blockInstance.transform.localScale = Vector3.one * gridManager.cellSize;
 
         return blockInstance;

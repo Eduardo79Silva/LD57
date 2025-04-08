@@ -1,4 +1,8 @@
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.Rendering.Universal;
+using UnityEngine.UI;
 
 public class GridManager : MonoBehaviour
 {
@@ -11,6 +15,13 @@ public class GridManager : MonoBehaviour
     public GameObject[,] gridArray;
     public int GridWidthInCells { get; private set; }
     public int GridHeightInCells { get; private set; }
+    private int totalBlocksInGrid;
+    private int totalOreBlocksInGrid;
+
+    public Canvas gameOverCanvas; // Reference to the game over canvas
+    public TextMeshProUGUI scoreText; // Reference to the score text
+
+    public Sprite grassImage; // Reference to the grass image for the game over screen
 
     [HideInInspector]
     public Vector3 gridOrigin;
@@ -20,7 +31,6 @@ public class GridManager : MonoBehaviour
         if (Instance == null)
         {
             Instance = this;
-            Debug.Log("GridManager instance set");
         }
         else
         {
@@ -67,22 +77,91 @@ public class GridManager : MonoBehaviour
         DrawGrid(gridWorldWidth, gridWorldHeight);
     }
 
+    void Update()
+    {
+        // Check for game over condition.
+        if (isGameOver())
+        {
+            int finalScore = CalculateFinalScore();
+            Debug.Log($"Game Over! Final Score: {finalScore}");
+            // Handle game over logic here (e.g., show UI, reset game, etc.)
+            gameOverCanvas.gameObject.SetActive(true);
+            scoreText.text = $"{finalScore}";
+        }
+    }
+
+    bool isGameOver()
+    {
+        // Check if the game is over (e.g., all blocks are removed).
+        for (int x = 0; x < GridWidthInCells; x++)
+        {
+            for (int y = 0; y < GridHeightInCells; y++)
+            {
+                if (gridArray[x, y] == null)
+                {
+                    continue;
+                }
+                if (gridArray[x, y].GetComponent<Block>().oreType != OreType.Dirt)
+                {
+                    // If any block has an ore type, the game is not over.
+                    return false;
+                }
+            }
+        }
+        Debug.Log("Game Over! All ores removed.");
+        return true;
+    }
+
+    int CalculateFinalScore()
+    {
+        int score = 0;
+        int keptDirtBlocks = 0;
+        for (int x = 0; x < GridWidthInCells; x++)
+        {
+            for (int y = 0; y < GridHeightInCells; y++)
+            {
+                if (gridArray[x, y] != null)
+                {
+                    Block block = gridArray[x, y].GetComponent<Block>();
+                    if (block != null && block.oreType == OreType.Dirt)
+                    {
+                        keptDirtBlocks++;
+                    }
+                }
+            }
+        }
+        int oreScore =
+            InventoryManager.Instance.ironCount * 5
+            + InventoryManager.Instance.goldCount * 10
+            + InventoryManager.Instance.diamondCount * 20;
+        int oreCount =
+            InventoryManager.Instance.ironCount
+            + InventoryManager.Instance.goldCount
+            + InventoryManager.Instance.diamondCount;
+        // Calculate score based on the number of ores collected compared to initial ores and kept dirt blocks plus the ore score.
+        score = (totalOreBlocksInGrid - oreCount) * 10 + keptDirtBlocks * 2 + oreScore;
+
+        score = Mathf.Max(0, score); // Ensure score is non-negative
+
+        return score;
+    }
+
     void GenerateTerrain()
     {
         float noiseScale = 0.1f; // adjust for desired roughness
         float noiseOffset = Random.Range(0f, 1000f);
 
-        for (int x = 0; x < GridWidthInCells; x++)
+        for (int y = 0; y < GridHeightInCells; y++)
         {
             // Compute a ground height for this column using Perlin noise.
-            float noiseValue = Mathf.PerlinNoise((x + noiseOffset) * noiseScale, 0f);
-            int groundHeight = Mathf.FloorToInt(
-                noiseValue * (GridHeightInCells / 2) + GridHeightInCells * 0.6f
-            );
 
             // Fill in all cells below (and including) groundHeight.
-            for (int y = 0; y < GridHeightInCells; y++)
+            for (int x = 0; x < GridWidthInCells; x++)
             {
+                float noiseValue = Mathf.PerlinNoise((x + noiseOffset) * noiseScale, 0f);
+                int groundHeight = Mathf.FloorToInt(
+                    noiseValue * (GridHeightInCells / 2) + GridHeightInCells * 0.6f
+                );
                 if (y <= groundHeight)
                 {
                     Vector3 spawnPos = new(
@@ -98,10 +177,36 @@ public class GridManager : MonoBehaviour
                     // Pass depthRatio into the block factory.
                     GameObject block = blockFactory.GenerateBlock(x, y, depthRatio, spawnPos);
                     gridArray[x, y] = block;
+                    if (block == null)
+                    {
+                        Debug.LogError($"Block generation failed at ({x}, {y})");
+                        continue;
+                    }
 
                     if (block.TryGetComponent<Block>(out var blockComp))
                     {
                         blockComp.Init(x, y, this);
+                        totalBlocksInGrid++;
+                        if (blockComp.oreType != OreType.Dirt)
+                        {
+                            totalOreBlocksInGrid++;
+                        }
+                    }
+
+                    // if it is a top block, change sprite to be a top block
+                    if (y == groundHeight)
+                    {
+                        if (
+                            block.TryGetComponent<SpriteRenderer>(out var spriteRenderer)
+                            && grassImage != null
+                        )
+                        {
+                            // Set the sprite to the grass image
+                            spriteRenderer.sprite = grassImage;
+                        }
+                        {
+                            spriteRenderer.sprite = grassImage;
+                        }
                     }
                 }
             }
@@ -268,6 +373,8 @@ public class GridManager : MonoBehaviour
         {
             RemoveBlockAt(pos.x, pos.y);
         }
+
+        InventoryManager.Instance.UpdateItemCountText(targetBlock);
     }
 }
 
@@ -291,9 +398,6 @@ public struct GridPosition
             );
             return default;
         }
-        // Convert world position to grid position based on the grid's origin and cell size.
-        Debug.Log($"Grid Origin: {GridManager.Instance.gridOrigin}");
-        Debug.Log($"Cell Size: {GridManager.Instance.cellSize}");
 
         int x = Mathf.FloorToInt(
             (worldPos.x - GridManager.Instance.gridOrigin.x) / GridManager.Instance.cellSize

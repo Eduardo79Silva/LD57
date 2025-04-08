@@ -1,6 +1,5 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewMagnetItem", menuName = "Items/Magnet")]
 public class MagnetItem : Item
 {
     public float pullStrength = 5f;

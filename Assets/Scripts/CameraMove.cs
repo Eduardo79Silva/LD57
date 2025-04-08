@@ -8,8 +8,6 @@ public class CameraMove : MonoBehaviour
     private Vector3 Difference;
     private Vector3 ResetCamera;
 
-    private bool drag = false;
-
     // New variables for vertical movement.
     public float verticalSpeed = 5f;
     public float fastMultiplier = 2f;
@@ -21,7 +19,6 @@ public class CameraMove : MonoBehaviour
 
     private void LateUpdate()
     {
-
         // Handle keyboard vertical movement.
         float currentSpeed = verticalSpeed;
         if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
@@ -30,11 +27,24 @@ public class CameraMove : MonoBehaviour
         }
         if (Input.GetKey(KeyCode.W))
         {
+            // Cap the height to the original camera height.
             Camera.main.transform.position += Vector3.up * currentSpeed * Time.deltaTime;
+            if (Camera.main.transform.position.y > ResetCamera.y)
+            {
+                Camera.main.transform.position = new Vector3(
+                    Camera.main.transform.position.x,
+                    ResetCamera.y,
+                    Camera.main.transform.position.z
+                );
+            }
         }
         if (Input.GetKey(KeyCode.S))
         {
-            Camera.main.transform.position += Vector3.down * currentSpeed * Time.deltaTime;
+            // Cap the height to 10x the original camera height.
+            if (Camera.main.transform.position.y > -108f)
+            {
+                Camera.main.transform.position += Vector3.down * currentSpeed * Time.deltaTime;
+            }
         }
 
         // Reset camera position when space is pressed.
