@@ -1,6 +1,6 @@
 # 🧲 DeepMine — A Strategic Mining Game
 
-**DeepMine** is a 48-hour game jam project built in Unity for Ludum Dare 57, based on the theme **"Depth."**  
+**DeepMine** is a 72-hour game jam project built in Unity for Ludum Dare 57, based on the theme **"Depth."**  
 It’s a physics-inspired, systems-driven mining game where every dig decision counts — built from scratch with a focus on **emergent gameplay**, **grid-based systems**, and **tool-based interaction loops**.
 
 > 💬 _"Drill smart. Support wisely. Collapse is just one wrong move away."_
@@ -89,4 +89,4 @@ Made by [Eduardo Silva] — a gameplay programmer focused on systems, feel, and 
 
 ---
 
-> _"Built in 48 hours, but structured like a real production prototype."_  
+> _"Built in 72 hours, but structured like a real production prototype."_  
